@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmaLoop - Reduce Medicine Waste</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="navbar">
+  <div class="logo">💊 PharmaLoop</div>
+  <div class="nav-links">
+    <a href="#how-it-works">How It Works</a>
+    <a href="#impact">Impact</a>
+    <a href="/login" class="btn btn-primary">Login</a>
+    <a href="/register" class="btn btn-outline">Sign Up</a>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-content">
+    <h1>Share Medicines. Reduce Waste. Save Lives.</h1>
+    <p class="hero-subtitle">AI-powered medicine redistribution platform connecting pharmacies, hospitals & clinics to prevent wastage and save costs.</p>
+    <div class="hero-buttons">
+      <a href="/register" class="btn btn-large btn-primary">Get Started Free</a>
+      <a href="#how-it-works" class="btn btn-large btn-outline">Learn More</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-number" id="medCount">0</div>
+        <div class="stat-label">Medicines Saved</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="peopleCount">0</div>
+        <div class="stat-label">Organizations Helped</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="wasteCount">0</div>
+        <div class="stat-label">Kg Waste Reduced</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="how-it-works">
+  <h2>How It Works</h2>
+  <p class="section-subtitle">Three simple steps to start saving medicines and money</p>
+  <div class="cards">
+    <div class="card feature-card">
+      <div class="card-icon">📋</div>
+      <h3>1. List Your Stock</h3>
+      <p>Add medicine inventory with expiry dates and usage patterns</p>
+    </div>
+    <div class="card feature-card">
+      <div class="card-icon">🤖</div>
+      <h3>2. AI Matches Needs</h3>
+      <p>Our ML models predict surplus and match with nearby demands automatically</p>
+    </div>
+    <div class="card feature-card">
+      <div class="card-icon">🚚</div>
+      <h3>3. Profitable Transfer</h3>
+      <p>Get discounted medicines or earn from surplus with optimized logistics</p>
+    </div>
+  </div>
+</div>
+
+<div class="section features-section">
+  <h2>Powered by AI & ML</h2>
+  <div class="features-grid">
+    <div class="feature-box">
+      <h4>🎯 Surplus Prediction</h4>
+      <p>Classification model predicts which medicine batches will expire unused</p>
+    </div>
+    <div class="feature-box">
+      <h4>📊 Demand Forecasting</h4>
+      <p>Regression model forecasts medicine needs for next month</p>
+    </div>
+    <div class="feature-box">
+      <h4>🔄 Smart Redistribution</h4>
+      <p>Scoring algorithm ranks best transfer options by profitability</p>
+    </div>
+    <div class="feature-box">
+      <h4>💰 Dynamic Discounts</h4>
+      <p>Automatic pricing based on urgency, distance, and demand</p>
+    </div>
+  </div>
+</div>
+
+<div class="section cta-section">
+  <h2>Ready to Reduce Waste?</h2>
+  <p>Join hospitals, pharmacies, and clinics already saving medicines</p>
+  <a href="/register" class="btn btn-large btn-primary">Start Now - It's Free</a>
+</div>
+
+<footer class="footer">
+  <p>&copy; 2026 PharmaLoop. Built for healthcare sustainability.</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

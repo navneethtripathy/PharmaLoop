@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redistribution - PharmaLoop</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="navbar">
+  <div class="logo">💊 PharmaLoop</div>
+  <div class="nav-links">
+    <a href="/dashboard">Dashboard</a>
+    <button class="btn btn-primary" onclick="runRedistribution()">🔄 Find Matches</button>
+    <a href="/" class="btn btn-outline" onclick="logout()">Logout</a>
+  </div>
+</div>
+
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1>Redistribution Opportunities</h1>
+    <p class="subtitle">AI-matched medicine transfers optimized for profitability</p>
+  </div>
+  
+  <div id="matchesGrid" class="matches-grid">
+    <!-- Matches will be loaded here -->
+  </div>
+</div>
+
+<script>
+if (!localStorage.getItem('token')) {
+  window.location.href = '/login';
+}
+
+async function runRedistribution() {
+  if (!confirm('Run AI redistribution matching? This will find optimal transfer opportunities.')) return;
+  
+  try {
+    const response = await fetch('/api/run-redistribution', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    const data = await response.json();
+    alert(data.message + '\nMatches found: ' + data.matches_found);
+    loadMatches();
+  } catch (error) {
+    alert('Error running redistribution');
+  }
+}
+
+async function loadMatches() {
+  try {
+    const response = await fetch('/api/redistribution-matches', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    const matches = await response.json();
+    displayMatches(matches);
+  } catch (error) {
+    console.error('Error loading matches:', error);
+  }
+}
+
+function displayMatches(matches) {
+  const grid = document.getElementById('matchesGrid');
+  
+  if (matches.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No redistribution matches yet. Click "Find Matches" to run AI matching.</div>';
+    return;
+  }
+  
+  grid.innerHTML = matches.map(match => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const isReceiver = match.receiver_id === user.id;
+    
+    return `
+    <div class="match-card ${match.net_profit > 0 ? 'profitable' : ''}">
+      <div class="match-header">
+        <h3>${match.medicine_name}</h3>
+        <span class="badge badge-${match.net_profit > 0 ? 'green' : 'yellow'}">
+          ${match.net_profit > 0 ? 'Profitable' : 'Break-even'}
+        </span>
+      </div>
+      
+      <div class="match-route">
+        <div class="route-point">
+          <div class="route-label">From</div>
+          <strong>${match.donor_name}</strong>
+          <div class="route-location">📍 ${match.donor_location}</div>
+        </div>
+        <div class="route-arrow">→ ${match.distance_km} km</div>
+        <div class="route-point">
+          <div class="route-label">To</div>
+          <strong>${match.receiver_name}</strong>
+          <div class="route-location">📍 ${match.receiver_location}</div>
+        </div>
+      </div>
+      
+      <div class="match-details">
+        <div class="detail-row">
+          <span>Quantity:</span>
+          <strong>${match.quantity} units</strong>
+        </div>
+        <div class="detail-row">
+          <span>Expires in:</span>
+          <strong class="${match.days_to_expiry < 30 ? 'urgent' : ''}">${match.days_to_expiry} days</strong>
+        </div>
+        <div class="detail-row">
+          <span>AI Match Score:</span>
+          <strong>${(match.redistribution_score * 100).toFixed(1)}%</strong>
+        </div>
+        <div class="detail-row">
+          <span>Discount:</span>
+          <strong class="discount">${match.discount_percent}% OFF</strong>
+        </div>
+      </div>
+      
+      <div class="pricing-breakdown">
+        <div class="price-row">
+          <span>Original Price:</span>
+          <span>₹${match.original_price.toFixed(2)}</span>
+        </div>
+        <div class="price-row discount">
+          <span>After Discount:</span>
+          <span>₹${match.discounted_price.toFixed(2)}</span>
+        </div>
+        <div class="price-row">
+          <span>Transfer Cost:</span>
+          <span>₹${match.transfer_cost.toFixed(2)}</span>
+        </div>
+        <div class="price-row total ${match.net_profit > 0 ? 'profit' : ''}">
+          <span><strong>Net ${isReceiver ? 'Cost' : 'Benefit'}:</strong></span>
+          <span><strong>₹${Math.abs(match.net_profit).toFixed(2)}</strong></span>
+        </div>
+      </div>
+      
+      <div class="match-actions">
+        ${isReceiver ? 
+          `<button class="btn btn-primary">Accept Offer</button>` :
+          `<button class="btn btn-outline">View Details</button>`
+        }
+      </div>
+    </div>
+  `}).join('');
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = '/';
+}
+
+// Load matches on page load
+loadMatches();
+</script>
+
+</body>
+</html>

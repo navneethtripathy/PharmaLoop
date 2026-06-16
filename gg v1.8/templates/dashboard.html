@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - PharmaLoop</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="navbar">
+  <div class="logo">💊 PharmaLoop</div>
+  <div class="nav-links">
+    <span id="userName">User</span>
+    <a href="/redistribution-view" class="btn btn-outline">Redistribution</a>
+    <a href="/" class="btn btn-outline" onclick="logout()">Logout</a>
+  </div>
+</div>
+
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1>Medicine Inventory</h1>
+    <button class="btn btn-primary" onclick="showAddMedicineModal()">+ Add Medicine</button>
+    <button class="btn btn-primary" onclick="showAddDemandModal()">+ Request Medicine</button>
+  </div>
+  
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="🔍 Search by medicine name, batch, or status..." onkeyup="filterMedicines()">
+  </div>
+  
+  <div id="medicineGrid" class="medicine-grid">
+    <!-- Medicines will be loaded here -->
+  </div>
+</div>
+
+<!-- Add Medicine Modal -->
+<div id="addMedicineModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('addMedicineModal')">&times;</span>
+    <h2>Add Medicine to Inventory</h2>
+    <form id="addMedicineForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Medicine Name *</label>
+          <input type="text" id="medicine_name" required>
+        </div>
+        <div class="form-group">
+          <label>Batch Number *</label>
+          <input type="text" id="batch_number" required>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Current Stock *</label>
+          <input type="number" id="current_stock" min="1" required>
+        </div>
+        <div class="form-group">
+          <label>Avg Monthly Usage *</label>
+          <input type="number" id="avg_monthly_usage" min="0" required>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Days to Expiry *</label>
+          <input type="number" id="days_to_expiry" min="1" required>
+        </div>
+        <div class="form-group">
+          <label>Price per Unit (₹) *</label>
+          <input type="number" id="price_per_unit" min="1" value="100" required>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Expiry Date *</label>
+        <input type="date" id="expiry_date" required>
+      </div>
+      
+      <button type="submit" class="btn btn-primary btn-block">Add Medicine</button>
+    </form>
+  </div>
+</div>
+
+<!-- Add Demand Modal -->
+<div id="addDemandModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal('addDemandModal')">&times;</span>
+    <h2>Request Medicine</h2>
+    <form id="addDemandForm">
+      <div class="form-group">
+        <label for="demand_medicine_name">Medicine Name *</label>
+        <input 
+          type="text" 
+          id="demand_medicine_name" 
+          name="medicine_name" 
+          placeholder="e.g., Paracetamol" 
+          required
+        >
+      </div>
+  
+      <div class="form-group">
+        <label for="past_month_usage">Past Month Usage *</label>
+        <input 
+          type="number" 
+          id="past_month_usage" 
+          name="past_month_usage" 
+          min="0" 
+          placeholder="Units used last month" 
+          required
+        >
+        <small style="color: #7f8c8d;">How many units did you use last month?</small>
+      </div>
+  
+      <div class="form-group">
+        <label for="urgency_level">Urgency Level *</label>
+        <select id="urgency_level" name="urgency_level" required>
+          <option value="">Select urgency</option>
+          <option value="low">Low - Can wait 2-4 weeks</option>
+          <option value="medium" selected>Medium - Need within 1-2 weeks</option>
+          <option value="high">High - Urgent (within days)</option>
+        </select>
+      </div>
+  
+      <button type="submit" class="btn btn-primary btn-block">Submit Request</button>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+const API_BASE = '';
+
+// Check authentication
+if (!localStorage.getItem('token')) {
+  window.location.href = '/login';
+}
+
+const user = JSON.parse(localStorage.getItem('user'));
+document.getElementById('userName').textContent = user.name;
+
+// Load medicines
+async function loadMedicines() {
+  try {
+    const response = await fetch('/api/medicines', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    const medicines = await response.json();
+    displayMedicines(medicines);
+  } catch (error) {
+    console.error('Error loading medicines:', error);
+  }
+}
+
+function displayMedicines(medicines) {
+  const grid = document.getElementById('medicineGrid');
+  
+  if (medicines.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No medicines added yet. Click "Add Medicine" to start.</div>';
+    return;
+  }
+  
+  grid.innerHTML = medicines.map(med => `
+    <div class="medicine-card ${med.status.toLowerCase()}" data-name="${med.medicine_name}">
+      <div class="med-header">
+        <h3>${med.medicine_name}</h3>
+        <span class="badge badge-${getStatusColor(med.status)}">${med.status}</span>
+      </div>
+      <div class="med-info">
+        <div class="info-row">
+          <span>📦 Stock:</span>
+          <strong>${med.current_stock} units</strong>
+        </div>
+        <div class="info-row">
+          <span>📅 Expires in:</span>
+          <strong class="${med.days_to_expiry < 30 ? 'urgent' : ''}">${med.days_to_expiry} days</strong>
+        </div>
+        <div class="info-row">
+          <span>📊 Monthly Usage:</span>
+          <strong>${med.avg_monthly_usage} units</strong>
+        </div>
+        <div class="info-row">
+          <span>💰 Price/Unit:</span>
+          <strong>₹${med.price_per_unit}</strong>
+        </div>
+        ${med.surplus_probability ? `
+        <div class="info-row">
+          <span>⚠️ Surplus Risk:</span>
+          <strong>${(med.surplus_probability * 100).toFixed(1)}%</strong>
+        </div>
+        ` : ''}
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${(med.days_to_expiry / 180) * 100}%"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getStatusColor(status) {
+  const colors = {
+    'SAFE': 'green',
+    'REDISTRIBUTE': 'yellow',
+    'CRITICAL': 'red'
+  };
+  return colors[status] || 'gray';
+}
+
+function filterMedicines() {
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  const cards = document.querySelectorAll('.medicine-card');
+  
+  cards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(searchTerm) ? 'block' : 'none';
+  });
+}
+
+// Add medicine
+document.getElementById('addMedicineForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const formData = {
+    medicine_name: document.getElementById('medicine_name').value,
+    batch_number: document.getElementById('batch_number').value,
+    current_stock: parseInt(document.getElementById('current_stock').value),
+    avg_monthly_usage: parseInt(document.getElementById('avg_monthly_usage').value),
+    days_to_expiry: parseInt(document.getElementById('days_to_expiry').value),
+    expiry_date: document.getElementById('expiry_date').value,
+    price_per_unit: parseFloat(document.getElementById('price_per_unit').value)
+  };
+  
+  try {
+    const response = await fetch('/api/medicines', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    if (response.ok) {
+      alert('Medicine added successfully!');
+      closeModal('addMedicineModal');
+      document.getElementById('addMedicineForm').reset();
+      loadMedicines();
+    }
+  } catch (error) {
+    alert('Error adding medicine');
+  }
+});
+
+// Add demand
+// Add Demand Form Submission
+document.getElementById('addDemandForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = '⏳ Submitting...';
+  submitBtn.disabled = true;
+  
+  const formData = {
+    medicine_name: document.getElementById('demand_medicine_name').value.trim(),
+    past_month_usage: parseInt(document.getElementById('past_month_usage').value),
+    // clinic_population removed - will be set to 1500 in backend automatically
+    urgency_level: document.getElementById('urgency_level').value
+  };
+  
+  console.log('📤 Submitting demand request:', formData);
+  
+  try {
+    const response = await fetch('/api/demand', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    console.log('📥 Server response:', data);
+    
+    if (response.ok) {
+      closeModal('addDemandModal');
+      document.getElementById('addDemandForm').reset();
+      showSuccessNotification(`✅ Demand request for ${formData.medicine_name} submitted!`);
+      console.log(`✅ Clinic population automatically set to: ${data.clinic_population || 1500}`);
+    } else {
+      alert(`❌ Error: ${data.error || 'Failed to submit demand'}`);
+      console.error('Server error:', data);
+    }
+  } catch (error) {
+    console.error('❌ Request failed:', error);
+    alert('❌ Network error. Please check if Flask server is running.');
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+
+function showAddMedicineModal() {
+  document.getElementById('addMedicineModal').style.display = 'block';
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+
+function showAddDemandModal() {
+  document.getElementById('addDemandModal').style.display = 'block';
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+  document.body.style.overflow = 'auto'; // Restore scrolling
+}
+
+
+function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.clear();
+    window.location.href = '/';
+  }
+}
+
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  if (event.target.classList.contains('modal')) {
+    event.target.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  }
+}
+
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+    });
+  }
+});
+
+
+// Success notification helper
+function showSuccessNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'success-notification';
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #2ecc71;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
+    z-index: 10000;
+    font-weight: 500;
+    animation: slideInRight 0.3s ease-out;
+  `;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOutRight 0.3s ease-in';
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 300);
+  }, 3000);
+}
+
+
+// Load medicines on page load
+loadMedicines();
+</script>
+
+</body>
+</html>
